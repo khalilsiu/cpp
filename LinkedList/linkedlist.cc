@@ -2,8 +2,8 @@
 #include <memory>
 #include <cstddef>
 #include <algorithm>
-// #define CATCH_CONFIG_MAIN
-// #include "catch.hpp"
+#define CATCH_CONFIG_MAIN
+#include "catch.hpp"
 using namespace std;
 
 class LinkedList
@@ -137,7 +137,8 @@ public:
     {
         std::size_t list_length = size();
         int counts = end - start;
-        if (start >= list_length || end > list_length)
+        counts < 0 ? counts = 1 : counts;
+        if (start > list_length || end > list_length)
         {
             throw std::runtime_error("Position out of range");
         }
@@ -152,9 +153,12 @@ public:
                 pop_front();
             }
         }
-        else if (start == list_length - 1)
+        else if (start == list_length || end == list_length)
         {
-            pop_back();
+            for (int i = 0; i < counts; i++)
+            {
+                pop_back();
+            }
         }
         else
         {
@@ -176,14 +180,14 @@ public:
     }
 
     // using tail
-    void push_back(int value)
+    void push_back(int value) noexcept
     {
         auto *temp = new LinkedList::Node{value};
         if (empty())
         {
             head = temp;
             tail = temp;
-            ++length;
+            length = 1;
             return;
         }
         else
@@ -218,17 +222,17 @@ public:
         }
     }
 
-    void push_front(int value)
+    void push_front(int value) noexcept
     {
+        auto *temp = new LinkedList::Node{value};
         if (empty())
         {
-            head = new LinkedList::Node{value};
-            tail = head;
+            head = temp;
+            tail = temp;
             length = 1;
         }
         else
         {
-            auto *temp = new LinkedList::Node{value};
             temp->next = head;
             head->prev = temp;
             head = temp;
@@ -290,28 +294,13 @@ public:
         }
     }
 
-    void swap(LinkedList &another_list)
+    void swap(LinkedList &another_list) noexcept
     {
         std::swap(head, another_list.head);
     }
 
-    void PrintList()
-    {
-        LinkedList::Node *temp = nullptr;
-        temp = head;
-        cout << "List elements: \t";
-        while (temp != nullptr)
-        {
-            cout << temp->data << "\t";
-            temp = temp->next;
-        }
-        cout << endl;
-        temp = nullptr;
-        delete temp;
-        return;
-    }
 
-    int get_value_at(int pos)
+   int get_value_at(int pos)
     {
         auto *cur = head;
         for (int i = 0; i < pos; i++)
@@ -324,124 +313,125 @@ public:
         }
         return cur->data;
     }
+
+    friend std::ostream& operator<< (std::ostream &out, const LinkedList &linkedlist);
 };
+std::ostream& operator<< (std::ostream &out, const LinkedList &linkedlist)
+{
+    auto *cur = linkedlist.head;
+    while(cur != nullptr)
+    {
+        out << cur->data << "\t";
+        cur=cur->next;
+    }
+    return out;
+}
+TEST_CASE("Linked list elements could be added and removed", "[LinkedList]")
+{
+    LinkedList new_list;
+    new_list.push_back(2);
+    new_list.push_back(3);
+    new_list.push_back(4);
+    new_list.push_back(5);
 
-// TEST_CASE("Linked list elements could be added and removed", "[LinkedList]")
-// {
-//     LinkedList new_list;
-//     new_list.push_back(2);
-//     new_list.push_back(3);
-//     new_list.push_back(4);
-//     new_list.push_back(5);
+    SECTION("front returns the first element in the list")
+    {
+        REQUIRE(new_list.front() == 2);
+    }
+    SECTION("back returns the last element in the list")
+    {
+        REQUIRE(new_list.back() == 5);
+    }
+    SECTION("empty returns false if list is not empty")
+    {
+        REQUIRE(!new_list.empty());
+    }
+    SECTION("size returns length of list")
+    {
+        REQUIRE(new_list.size() == 4);
+    }
+    SECTION("clear removes all elements in the list")
+    {
+        new_list.clear();
+        REQUIRE(new_list.empty());
+    }
+    SECTION("push_back adds an element to the end")
+    {
+        new_list.push_back(6);
+        REQUIRE(new_list.get_value_at(4) == 6);
+        cout << "List: " << new_list << endl;
+    }
+    SECTION("push_front adds an element to the front")
+    {
+        new_list.push_front(1);
+        REQUIRE(new_list.get_value_at(0) == 1);
+        cout << "List: " << new_list << endl;
+    }
+    SECTION("pop_back removes an element from the end")
+    {
+        new_list.pop_back();
+        REQUIRE(new_list.get_value_at(2) == 4);
+        cout << "List: " << new_list << endl;
+    }
+    SECTION("pop_front removes an element from the front")
+    {
+        new_list.pop_front();
+        REQUIRE(new_list.get_value_at(0) == 3);
+        cout << "List: " << new_list << endl;
+    }
+    SECTION("insert inserts initialized element at position for a number of times")
+    {
+        new_list.insert(0,6,3);
+        bool testPassed = (new_list.get_value_at(0) == 6 && new_list.get_value_at(1) == 6 && new_list.get_value_at(2) == 6);
+        REQUIRE(testPassed);
+        cout << "List: " << new_list << endl;
+    }
+    SECTION("emplace insert an element at position")
+    {
+        new_list.emplace(3,8);
+        REQUIRE(new_list.get_value_at(3) == 8);
+        cout << "List: " << new_list << endl;
+    }
+    SECTION("erase removes an element at a position if end is not specified")
+    {
+        new_list.erase(2);
+        REQUIRE(new_list.get_value_at(2) == 5);
+        cout << "List: " << new_list << endl;
+    }
+    SECTION("erase removes elements from start to end exclusive")
+    {
+        new_list.erase(0,3);
+        REQUIRE(new_list.get_value_at(0) == 5);
+        cout << "List: " << new_list << endl;
+    }
+    SECTION("resize resizes list removing elements if size is shorter")
+    {
+        new_list.resize(2);
+        REQUIRE(new_list.get_value_at(1) == 3);
+        cout << "List: " << new_list << endl;
+    }
+    SECTION("resize expands list by pushing 0 to the end if size is larger")
+    {
+        new_list.resize(7);
+        REQUIRE(new_list.get_value_at(6) == 0);
+        cout << "List: " << new_list << endl;
+    }
+    SECTION("swap swaps contents of two lists")
+    {
+        LinkedList another_list;
+        another_list.push_back(5);
+        another_list.push_back(4);
+        another_list.push_back(3);
+        another_list.push_back(2);
+        new_list.swap(another_list);
+        bool testPassed = (new_list.get_value_at(0) == 5 && another_list.get_value_at(0) == 2);
+        REQUIRE(testPassed);
+        cout << "List: " << new_list << endl;
+        cout << "List: " << another_list << endl;
+        
 
-//     SECTION("front returns the first element in the list")
-//     {
-//         REQUIRE(new_list.Front() == 2);
-//     }
-//     SECTION("back returns the last element in the list")
-//     {
-//         REQUIRE(new_list.Back() == 5);
-//     }
-//     SECTION("empty returns false if list is not empty")
-//     {
-//         REQUIRE(!new_list.Empty());
-//     }
-//     SECTION("size returns length of list")
-//     {
-//         REQUIRE(new_list.Size() == 4);
-//     }
-//     SECTION("clear removes all elements in the list")
-//     {
-//         new_list.Clear();
-//         REQUIRE(new_list.Empty());
-//     }
-//     SECTION("getSize returns the number of bytes of the list")
-//     {
-//         REQUIRE(new_list.GetSize() == 32);
-//     }
-//     SECTION("push_back adds an element to the end")
-//     {
-//         new_list.push_back(6);
-//         REQUIRE(new_list.GetValueAt(4) == 6);
-//         new_list.PrintList();
-//     }
-//     SECTION("push_front adds an element to the front")
-//     {
-//         new_list.PushFront(1);
-//         REQUIRE(new_list.GetValueAt(0) == 1);
-//         new_list.PrintList();
-//     }
-//     SECTION("pop_back removes an element from the end")
-//     {
-//         new_list.pop_back();
-//         REQUIRE(new_list.GetValueAt(2) == 4);
-//         new_list.PrintList();
-//     }
-//     SECTION("pop_front removes an element from the front")
-//     {
-//         new_list.PopFront();
-//         REQUIRE(new_list.GetValueAt(0) == 3);
-//         new_list.PrintList();
-//     }
-//     SECTION("insert inserts initialized element at position for a number of times")
-//     {
-//         Node newNode;
-//         newNode.data = 6;
-//         newNode.next = nullptr;
-//         new_list.Insert(0,newNode,3);
-//         bool testPassed = (new_list.GetValueAt(0) == 6 && new_list.GetValueAt(1) == 6 && new_list.GetValueAt(2) == 6);
-//         REQUIRE(testPassed);
-//         new_list.PrintList();
-//     }
-//     SECTION("emplace insert an element at position")
-//     {
-//         new_list.Emplace(3,8);
-//         REQUIRE(new_list.GetValueAt(3) == 8);
-//         new_list.PrintList();
-//     }
-//     SECTION("erase removes an element at a position if end is not specified")
-//     {
-//         new_list.Erase(2);
-//         REQUIRE(new_list.GetValueAt(2) == 5);
-//         new_list.PrintList();
-//     }
-//     SECTION("erase removes elements from start to end exclusive")
-//     {
-//         new_list.Erase(0,3);
-//         REQUIRE(new_list.GetValueAt(0) == 5);
-//         new_list.PrintList();
-//     }
-//     SECTION("resize resizes list removing elements if size is shorter")
-//     {
-//         new_list.Resize(2);
-//         REQUIRE(new_list.GetValueAt(1) == 3);
-//         new_list.PrintList();
-//     }
-//     SECTION("resize expands list by pushing 0 to the end if size is larger")
-//     {
-//         new_list.Resize(7);
-//         REQUIRE(new_list.GetValueAt(6) == 0);
-//         new_list.PrintList();
-//     }
-//     SECTION("swap swaps contents of two lists")
-//     {
-//         LinkedList another_list;
-//         another_list.push_back(5);
-//         another_list.push_back(4);
-//         another_list.push_back(3);
-//         another_list.push_back(2);
-//         new_list.Swap(&another_list);
-//         bool testPassed = (new_list.GetValueAt(0) == 5 && another_list.GetValueAt(0) == 2);
-//         REQUIRE(testPassed);
-//         cout << "Original List: \t";
-//         new_list.PrintList();
-//         cout << endl;
-//         cout << "Another List: \t";
-//         another_list.PrintList();
-//         cout << endl;
-
-//     }
-// }
+    }
+}
 
 // Create a Node: pointer of Node type, insert value in its data field, next is NULL
 
@@ -451,16 +441,16 @@ public:
 
 // If list is created already: we would insert at the tail, add newly created Node to a tail
 
-int main()
-{
-    LinkedList new_list;
-    new_list.push_front(3);
-    new_list.push_front(4);
-    new_list.push_front(5);
-    new_list.push_front(6);
-    new_list.push_front(7);
+// int main()
+// {
+//     LinkedList new_list;
+//     new_list.push_front(3);
+//     new_list.push_front(4);
+//     new_list.push_front(5);
+//     new_list.push_front(6);
+//     new_list.push_front(7);
 
+//     new_list.erase(1,4);
 
-    new_list.PrintList();
-    cout << new_list.get_value_at(2) << endl;
-}
+//     cout << new_list << endl;
+// }
