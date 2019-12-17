@@ -48,7 +48,7 @@ public:
         return length;
     }
 
-    void clear()
+    void clear() noexcept
     {
         std::size_t list_length = size();
         for (int i = 0; i < list_length; i++)
@@ -58,7 +58,7 @@ public:
     }
 
     // // insert is pass by value, tried just passing by value of newNode, but the local variable goes out of scope, could not be accessed outside
-    void insert(int pos, int value, int counts = 1)
+    void insert(int pos, int value, int counts = 1) 
     {
         std::size_t list_length = size();
         if (pos > list_length)
@@ -269,7 +269,7 @@ public:
         }
     }
 
-    void resize(int new_size)
+    void resize(int new_size) noexcept
     {
         std::size_t list_length = size();
         if (new_size == 0)
@@ -300,7 +300,7 @@ public:
     }
 
 
-   int get_value_at(int pos)
+   int get_value_at(int pos) noexcept
     {
         auto *cur = head;
         for (int i = 0; i < pos; i++)
@@ -450,7 +450,7 @@ TEST_CASE("Linked list elements could be added and removed", "[LinkedList]")
 //     new_list.push_front(6);
 //     new_list.push_front(7);
 
-//     new_list.erase(1,4);
+//     new_list.clear();
 
 //     cout << new_list << endl;
 // }
