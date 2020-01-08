@@ -32,6 +32,7 @@ private:
     std::size_t length = 0;
 
 public:
+
     LinkedList() = default;
 
     int front() const
@@ -62,7 +63,6 @@ public:
             pop_back();
         }
     }
-
     /*
     2 questions you need to think about.
     why you need to templatize this function?
