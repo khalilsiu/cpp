@@ -6,9 +6,14 @@
 // #include "catch.hpp"
 using namespace std;
 
+template<typename T>
+/*
+Why we need to templatize the ListedList?  check the std::vector<> or std::linkedlist<T>.
+Node is the implementation detail, no one really care. The user only need to know you are using listedlist. So, the whole class
+has to know it is holding <int> or <float> or <std::string> or whatever
+*/
 class LinkedList
 {
-    template <typename T>
     struct Node
     {
         Node(T value)
@@ -17,12 +22,13 @@ class LinkedList
         }
         T data;
         Node *prev = nullptr;
-        std::unique_ptr<LinkedList::Node<T>> next = nullptr;
+        std::unique_ptr<Node> next = nullptr; // In this scope, You already know what is Node<T>. In this case, C++ allow you to use Node only
     };
 
 private:
-    Node<T> *tail = nullptr;
-    std::unique_ptr<LinkedList::Node<T>> head = nullptr;
+    // For old code, question, what is <T> in this case? So, the ListedLIst  has to be templatized
+    Node *tail = nullptr;
+    std::unique_ptr<Node> head = nullptr; // The Node is known in the scope. No need to specific the whole name
     std::size_t length = 0;
 
 public:
@@ -57,11 +63,41 @@ public:
             pop_back();
         }
     }
+    /*
+    2 questions you need to think about.
+    why you need to templatize this function?
+    1) because you misconcept why and where we need template. If you put the template<int> at the ListedList, then this function will become
+    ```
+    void insert(int pos, int value, int counts = 1) // You can consider the template is more or less like a text replace first 
+    ```
+    (not entirely, but for beginner, it is easier to imagine. We can discuss this later)
 
-    // // insert is pass by value, tried just passing by value of newNode, but the local variable goes out of scope, could not be accessed outside
-    template <typename T>
-    void insert(int pos, T value, int counts = 1)
+    You can remove the template in the insert function below
+
+    2) But!!! I will also templatize this function, why? imagine a case
+    ```
+    struct MyClass
     {
+        explicit MyClass(int);
+    };
+
+    LinkedList<MyClass> myList; 
+    ```
+    if I have this definition, normally the insert function is
+    ```
+    void insert(int pos, MyClass value, int counts = 1)
+    ```
+    and we have to call `myList.insert(MyClass{999})`, right?
+
+    But, it might be more nature to call myList.insert(999)? ( It depends on the problem, sometime it is a worse design, but for the syntax, it is possible)
+
+    I will show you how to work on it. 
+    */
+    template <typename T2> // T is already been used by the LinkedList, you cannot reuse T
+    void insert(int pos, T2&& value, int counts = 1) // Check what is T2&&, forwarding reference ( or universal reference)
+    {
+        static_assert(is_constructible_v<T, T2>, "T must be construtiable by the T2m, i.e. T var{T2{}}; must be valid"); // Check what is it
+
         std::size_t list_length = size();
         if (pos > list_length)
         {
@@ -71,6 +107,7 @@ public:
         {
             for (int i = 0; i < counts; i++)
             {
+                // In my case, you have to templatize the push_front and push_back also
                 push_front(value);
             }
         }
@@ -85,7 +122,7 @@ public:
         {
             for (int i = 0; i < counts; i++)
             {
-                auto *temp_tail = tail;
+                auto *temp_tail = tail; // personally, I prefer auto* (i.e. int*) than int *a;    Because you can tell it is type(int*)
                 auto *cur = head.get();
                 auto *pre = cur;
                 for (int j = 0; j < pos; j++)
@@ -93,7 +130,7 @@ public:
                     pre = cur;
                     cur = cur->next.get();
                 }
-                auto temp_pre_next = std::move(pre->next);
+                auto temp_pre_next = std::move(pre->next); // Good, you have the right concept
                 tail = pre;
                 push_back(value);
                 tail->next = std::move(temp_pre_next);
@@ -101,9 +138,37 @@ public:
             }
         }
     }
-    template <typename T>
-    void emplace(int pos, T value)
+
+    /*
+    Sometime more reading task. What is emplace? Here is a very simple example ( not totally correct )
+
+    what is insert:
+        create an entry in a location
+        what is the value? I dont care ( normally is the default initialization )
+        once it is created, copy the value into the node
+        end
+
+    what is emplace:
+        create an entry in a location directly with the ctor(.......) // for instance MyClass( int, int, float, std::string)
+        end
+
+    you see the difference right? 
+
+    Imagine the MyClass have a `ctor(int, int)`
+    And then, what is the diff between  myList.insert(MyClass{1,2}) and myList.emplace(MyClass{1,2}) ?
+    No, right? you also create a temp object and do some copy. It is not good.
+
+    But!! Any difference if we call `myList.emplace(1,2)` ? A big difference. There is no temporary object now. The 1 and 2 are directly created in the list
+    That's why we call this emplace.
+
+    Sometime the ctor have 1 arg, sometime 2args or more, sometime no argument. How to implement? I will show you how to implement this style
+    https://en.cppreference.com/w/cpp/language/parameter_pack
+    */
+    template <typename... Args>
+    void emplace(int pos, Args&&... args) // Check my list, this mean this function accept 0, 1, 2, .....inf arguments
     {
+        static_assert(is_constructible_v<T, Args...>); // Check what is it, same link
+
         std::size_t list_length = size();
         if (pos > list_length)
         {
@@ -111,11 +176,12 @@ public:
         }
         if (pos == 0)
         {
-            push_front(value);
+            push_front(value); 
         }
         else if (pos == list_length)
         {
-            push_back(value);
+            push_back(std::forward<Args>(args)...); // Check what is std::forward. and Args...     I sent you 3 pdf, they already teach you many things
+            // I will show you how to right push_back, you have to implement all other functions
         }
         else
         {
@@ -185,11 +251,10 @@ public:
         }
     }
 
-    // using tail
-    template <typename T>
-    void push_back(T value) noexcept
+    template <typename... Args>// Check this
+    void push_back(Args&&... args) noexcept // Check this
     {
-        auto temp = std::make_unique<LinkedList::Node<T>>(value);
+        auto temp = std::make_unique<LinkedList::Node<T>>(std::forward<Args>(args)...);// Check this
         if (empty())
         {
             head = std::move(temp);
@@ -230,7 +295,7 @@ public:
     template <typename T>
     void push_front(T value) noexcept
     {
-        auto temp = std::make_unique<LinkedList::Node>(value);
+        auto temp = std::make_unique<LinkedList::Node>(value); // Todo
         if (empty())
         {
             head = std::move(temp);
@@ -320,16 +385,18 @@ public:
 
     friend std::ostream &operator<<(std::ostream &out, LinkedList &linkedlist);
 };
-template <typename T>
-std::ostream &operator<<(std::ostream &out, LinkedList &linkedlist)
+
+template <typename T> // You old code. What is T? T is not related to any arguments, the compiler does not know what is T
+std::ostream& operator<<(std::ostream &out, const LinkedList<T>& linkedlist)  // Must be const ref
 {
-    std::unique_ptr<LinkedList::Node<T>> cur = nullptr;
-    std::swap(cur, linkedlist.head);
-    while (cur != nullptr)
+    // You implementation is not correct. You will modify the content
+
+    LinkedList<T>:Node* cur = linkedlist.head.get();
+    while (cur)
     {
-        out << cur->data << "\t";
-        std::swap(cur, cur->next);
-    }
+        out << cur;
+        cur = cur.next.get();
+    }    
     return out;
 }
 // TEST_CASE("Linked list elements could be added and removed", "[LinkedList]")
