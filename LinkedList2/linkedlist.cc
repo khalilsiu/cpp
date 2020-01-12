@@ -33,11 +33,17 @@ class LinkedList
 
         int front() const
         {
-            if (empty())
-            {
-                throw std::runtime_error("List is empty");
-            }
-            return head->data;
+            return head ? head->data : throw std::runtime_error("List is empty.");
+        }
+
+        int back() const
+        {
+            return tail ? tail->data : throw std::runtime_error("List is empty.");
+        }
+
+        std::size_t size() const noexcept
+        {
+            return length;
         }
 
         void insert(int pos, T&& value, int counts = 1)
