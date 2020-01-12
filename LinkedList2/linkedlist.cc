@@ -4,6 +4,25 @@
 #include <algorithm>
 #include <utility>
 
+class MyClass
+{
+    public:
+        MyClass(int num1, int num2)
+        : data{num1*num2}
+        {
+        }
+    private:
+        int data;
+
+    friend std::ostream& operator<< (std::ostream& out, const MyClass& multiply);
+};
+
+std::ostream& operator<< (std::ostream& out, const MyClass& multiply)
+{
+    out << multiply.data;
+    return out;
+}
+
 
 
 template <typename T>
@@ -61,6 +80,7 @@ class LinkedList
         template <typename T2>
         void insert(int pos, T2&& value, int counts = 1)
         {
+            static_assert(std::is_constructible_v<T,T2>);
             if (empty())
             {
                 push_back(std::forward<T2>(value));
@@ -105,6 +125,29 @@ class LinkedList
                 }
             }
         }
+
+        template <typename ...Args>
+        void emplace_back(Args&& ...args)
+        {
+            static_assert(std::is_constructible_v<T, Args...>);
+            push_back(T(std::forward<Args>(args)...));
+        }
+
+        template <typename ...Args>
+        void emplace_front(Args&& ...args)
+        {
+            static_assert(std::is_constructible_v<T,Args...>);
+            push_front(T(std::forward<Args>(args)...));
+        }
+
+        template <typename ...Args>
+        void emplace(int pos, Args&&...args)
+        {
+            static_assert(std::is_constructible_v<T,Args...>);
+            insert(pos, T(std::forward<Args>(args)...));
+        }
+
+        
 
         void erase(int start, int end=0)
         {
@@ -227,12 +270,18 @@ std::ostream& operator<<(std::ostream& out, const LinkedList<T>& linkedlist)
 
 int main()
 {
-    LinkedList<float> new_list;
-    new_list.push_back(1.5);
-    new_list.push_back(2.5);
-    new_list.push_back(3.5);
-    new_list.push_back(5.5);
-    new_list.insert(1,6.5,2);
+    LinkedList<MyClass> new_list;
+
+    new_list.emplace_back(2,4);
+    new_list.emplace_back(4,4);
+    new_list.emplace_front(5,4);
+    new_list.emplace(3,9,4);
+
+    // new_list.push_back(2.5);
+    // new_list.push_back(3.5);
+    // new_list.push_back(5.5);
+    // new_list.insert(1,MyClass{3,4}, 2);
     std::cout << new_list << std::endl;
+
 
 }
