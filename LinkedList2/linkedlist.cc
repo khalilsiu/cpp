@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <utility>
 
+
+
 template <typename T>
 class LinkedList
 {
@@ -46,11 +48,22 @@ class LinkedList
             return length;
         }
 
-        void insert(int pos, T&& value, int counts = 1)
+        void clear()
+        {
+            const std::size_t list_length = length;
+            for (int i = 0; i < list_length; i++)
+            {
+                std::cout << i << std::endl;
+                pop_back();
+            }
+        }
+
+        template <typename T2>
+        void insert(int pos, T2&& value, int counts = 1)
         {
             if (empty())
             {
-                push_back(std::forward<T>(value));
+                push_back(std::forward<T2>(value));
             }
             else
             {
@@ -62,14 +75,14 @@ class LinkedList
                 {
                     for(int i = 0; i < counts; i++)
                     {
-                        push_front(std::forward<T>(value));
+                        push_front(std::forward<T2>(value));
                     }
                 }
                 else if (pos == length)
                 {
                     for(int i = 0; i < counts; i++)
                     {
-                        push_back(std::forward<T>(value));
+                        push_back(std::forward<T2>(value));
                     }
                 }
                 else
@@ -84,13 +97,42 @@ class LinkedList
                         auto temp_next = std::move(cur->next);
                         auto* temp_tail = tail;
                         tail = cur;
-                        push_back(std::forward<T>(value));
+                        push_back(std::forward<T2>(value));
                         temp_next->prev = tail;
                         tail->next = std::move(temp_next);
                         tail = temp_tail;
                     }
                 }
             }
+        }
+
+        void erase(int start, int end=0)
+        {
+            std::size_t list_length = length;
+            if (start < 0 || start >= list_length)
+            {
+                throw std::runtime_error("Start position is out of range.");
+            }
+            else if (end < 0 || end >= list_length)
+            {
+                throw std::runtime_error("End position is out of range.");
+            }
+            else if (end != 0 && end < start)
+            {
+                throw std::runtime_error("End position has to be equal or larger than start position.");
+            }
+            else
+            {
+                if (start == 0)
+                {
+                    pop_front();
+                }
+                else if (start == list_length-1)
+                {
+                    pop_back();
+                }
+            }
+            
         }
 
 
@@ -127,8 +169,48 @@ class LinkedList
                 ++length;
             }
         }
-        template <typename T2>
-        friend std::ostream& operator<<(std::ostream& out, const LinkedList<T2>& linkedlist);
+
+        void pop_back()
+        {
+            if (empty())
+            {
+                throw std::runtime_error("List is empty.");
+            }
+            else if (length == 1)
+            {
+                head = nullptr;
+                tail = nullptr;
+                --length;
+            }
+            else
+            {
+                tail = tail->prev;
+                tail->next = nullptr;
+                --length;
+            }
+        }
+
+        void pop_front()
+        {
+            if(empty())
+            {
+                throw std::runtime_error("List is empty.");
+            }
+            else if (length == 1)
+            {
+                pop_back();
+            }
+            else
+            {
+                head = std::move(head->next);
+                head->prev = nullptr;
+                --length;
+            }
+        }
+
+
+        template <typename T3>
+        friend std::ostream& operator<<(std::ostream& out, const LinkedList<T3>& linkedlist);
 };
 
 template <typename T>
@@ -149,7 +231,8 @@ int main()
     new_list.push_back(1.5);
     new_list.push_back(2.5);
     new_list.push_back(3.5);
-    new_list.push_front(5.5);
-    new_list.insert(4,6.5,2);
+    new_list.push_back(5.5);
+    new_list.insert(1,6.5,2);
     std::cout << new_list << std::endl;
+
 }
