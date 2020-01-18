@@ -47,6 +47,57 @@ class LinkedList
     public:
         LinkedList() = default;
 
+        class Iterator
+        {
+            public:
+                Iterator(Node* ptr = nullptr)
+                : cur_node_ptr{ptr}
+                {
+                    std::cout << "Iterator constructor" << std::endl;
+                }
+
+                T operator* ()
+                {
+                    return cur_node_ptr->data;
+                }
+
+                Iterator operator++ (int)
+                {
+                    cur_node_ptr = cur_node_ptr->next.get();
+                    return cur_node_ptr;
+                }
+
+                Iterator operator+(int num)
+                {
+                    for (int i = 0; i < num; i++)
+                    {
+                        cur_node_ptr++;
+                    }
+                    return cur_node_ptr;
+                }
+
+                Iterator operator= (const Iterator&& it)
+                {
+                    cur_node_ptr = it.cur_node_ptr;
+                    std::cout << "operator = is run" << std::endl;
+                    return Iterator(cur_node_ptr);
+                }
+
+            private:
+                Node* cur_node_ptr;
+        };
+
+
+        Iterator begin()
+        {
+            return Iterator(head.get());
+        }
+
+        Iterator end()
+        {
+            return Iterator(tail);
+        }
+
         bool empty() const noexcept
         {
             return (!head);
@@ -72,7 +123,6 @@ class LinkedList
             const std::size_t list_length = length;
             for (int i = 0; i < list_length; i++)
             {
-                std::cout << i << std::endl;
                 pop_back();
             }
         }
@@ -211,6 +261,7 @@ class LinkedList
                 tail = tail->next.get();
                 ++length;
             }
+
         }
 
         void pop_back()
@@ -270,17 +321,17 @@ std::ostream& operator<<(std::ostream& out, const LinkedList<T>& linkedlist)
 
 int main()
 {
-    LinkedList<MyClass> new_list;
+    LinkedList<int> new_list;
 
-    new_list.emplace_back(2,4);
-    new_list.emplace_back(4,4);
-    new_list.emplace_front(5,4);
-    new_list.emplace(3,9,4);
+    LinkedList<int>::Iterator it;
+    
+    it = new_list.begin();
 
-    // new_list.push_back(2.5);
-    // new_list.push_back(3.5);
-    // new_list.push_back(5.5);
-    // new_list.insert(1,MyClass{3,4}, 2);
+    new_list.push_back(1);
+    new_list.push_back(2);
+    std::cout << *new_list.begin() << std::endl;
+
+
     std::cout << new_list << std::endl;
 
 
