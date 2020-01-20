@@ -40,12 +40,13 @@ class LinkedList
         Node* prev = nullptr;
     };
     private:
-        std::unique_ptr<Node> head = nullptr;
         Node* tail = nullptr;
         std::size_t length = 0;
 
     public:
         LinkedList() = default;
+        std::unique_ptr<Node> head = nullptr;
+
 
         class Iterator
         {
@@ -53,7 +54,6 @@ class LinkedList
                 Iterator(Node* ptr = nullptr)
                 : cur_node_ptr{ptr}
                 {
-                    std::cout << "Iterator constructor" << std::endl;
                 }
 
                 T operator* ()
@@ -67,20 +67,86 @@ class LinkedList
                     return cur_node_ptr;
                 }
 
+                Iterator operator-- (int)
+                {
+                    cur_node_ptr = cur_node_ptr->prev;
+                    return cur_node_ptr;
+                }
+
                 Iterator operator+(int num)
                 {
                     for (int i = 0; i < num; i++)
                     {
-                        cur_node_ptr++;
+                        if (cur_node_ptr)
+                        {
+                            cur_node_ptr = cur_node_ptr->next.get();
+                        }
+                        else
+                        {
+                            throw std::runtime_error("Iterator exceeds range of container.");
+                        }
+                        
                     }
                     return cur_node_ptr;
                 }
 
-                Iterator operator= (const Iterator&& it)
+                Iterator operator-(int num)
+                {
+                    for (int i = 0; i < num; i++)
+                    {
+                        if (cur_node_ptr->prev)
+                        {
+                            cur_node_ptr = cur_node_ptr->prev;
+                        }
+                        else
+                        {
+                            throw std::runtime_error("Iterator exceeds range of container.");
+                        }
+                        
+                    }
+                    return cur_node_ptr;
+                }
+
+                Iterator operator= (const Iterator& it)
                 {
                     cur_node_ptr = it.cur_node_ptr;
                     std::cout << "operator = is run" << std::endl;
-                    return Iterator(cur_node_ptr);
+                    return cur_node_ptr;
+                }
+
+                bool operator!=(const Iterator& it)
+                {
+                    return cur_node_ptr != it.cur_node_ptr;
+                }
+
+                bool operator<(const Iterator& it)
+                {
+                    return cur_node_ptr < it.cur_node_ptr;
+                }
+
+                bool operator>(const Iterator& it)
+                {
+                    return cur_node_ptr > it.cur_node_ptr;
+                }
+
+                bool operator>=(const Iterator& it)
+                {
+                    return cur_node_ptr >= it.cur_node_ptr;
+                }
+
+                 bool operator<=(const Iterator& it)
+                {
+                    return cur_node_ptr <= it.cur_node_ptr;
+                }
+
+                bool operator==(const Iterator& it)
+                {
+                    return cur_node_ptr == it.cur_node_ptr;
+                }
+
+                Node* get_ptr()
+                {
+                    return cur_node_ptr;
                 }
 
             private:
@@ -90,12 +156,12 @@ class LinkedList
 
         Iterator begin()
         {
-            return Iterator(head.get());
+            return head.get();
         }
 
         Iterator end()
         {
-            return Iterator(tail);
+            return tail->next.get();
         }
 
         bool empty() const noexcept
@@ -128,27 +194,28 @@ class LinkedList
         }
 
         template <typename T2>
-        void insert(int pos, T2&& value, int counts = 1)
+        void insert(Iterator it_position, T2&& value, int counts = 1)
         {
             static_assert(std::is_constructible_v<T,T2>);
+
             if (empty())
             {
                 push_back(std::forward<T2>(value));
             }
             else
             {
-                if(pos < 0 || pos > length)
+                if (it_position < begin() && it_position != end())
                 {
                     throw std::runtime_error("Position is out of range");
                 }
-                else if (pos == 0)
+                else if (it_position == begin())
                 {
                     for(int i = 0; i < counts; i++)
                     {
                         push_front(std::forward<T2>(value));
                     }
                 }
-                else if (pos == length)
+                else if (it_position == end())
                 {
                     for(int i = 0; i < counts; i++)
                     {
@@ -159,20 +226,18 @@ class LinkedList
                 {
                     for (int i = 0; i < counts; i++)
                     {
-                        auto* cur = head.get();
-                        for (int i = 0; i < pos-1; i++)
-                        {
-                            cur = cur->next.get();
-                        }
-                        auto temp_next = std::move(cur->next);
+                        it_position--;
+                        auto temp_next = std::move(it_position.get_ptr()->next);
                         auto* temp_tail = tail;
-                        tail = cur;
+                        tail = it_position.get_ptr();
                         push_back(std::forward<T2>(value));
                         temp_next->prev = tail;
                         tail->next = std::move(temp_next);
                         tail = temp_tail;
                     }
                 }
+        
+                
             }
         }
 
@@ -319,17 +384,22 @@ std::ostream& operator<<(std::ostream& out, const LinkedList<T>& linkedlist)
     return out;
 }
 
+
 int main()
 {
     LinkedList<int> new_list;
 
     LinkedList<int>::Iterator it;
+    LinkedList<int>::Iterator it2;
     
-    it = new_list.begin();
 
     new_list.push_back(1);
     new_list.push_back(2);
-    std::cout << *new_list.begin() << std::endl;
+
+    it = new_list.begin();
+
+
+    new_list.insert(it-2, 10);
 
 
     std::cout << new_list << std::endl;
