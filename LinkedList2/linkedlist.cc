@@ -109,7 +109,7 @@ public:
                     cur_node_ptr = cur_node_ptr->prev;
                 }else{
                     auto temp = std::make_unique<Node>(0);
-                    temp->next = std::move(cur_node_ptr->head);
+                    temp->next = std::move(cur_node_ptr);
                     cur_node_ptr = temp.get();
                 }
             }
