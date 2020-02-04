@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <algorithm>
 #include <utility>
+#include <vector>
 
 class MyClass
 {
@@ -66,95 +67,64 @@ public:
             }
         }
 
+        Iterator& operator++()
+        {
+            cur_node_ptr = cur_node_ptr->next.get();
+            return *this;
+        }
+
         Iterator operator++(int)
         {
-            if (cur_node_ptr)
-            {
-                cur_node_ptr = cur_node_ptr->next.get();
-            }
-            else
-            {
-                throw std::runtime_error("Iterator exceeds range of container.");
-            }
+            Iterator temp(cur_node_ptr);
+            cur_node_ptr = cur_node_ptr-> next.get();
+            std::cout << *temp << std::endl;
+            return temp;
+        }
 
-            return cur_node_ptr;
+        Iterator& operator--()
+        {
+            cur_node_ptr = cur_node_ptr->prev;
+            return *this;   
         }
 
         Iterator operator--(int)
         {
-            if (cur_node_ptr->prev)
-            {
-                cur_node_ptr = cur_node_ptr->prev;
-            }
-            else
-            {
-                throw std::runtime_error("Iterator exceeds range of container.");
-            }
-            return cur_node_ptr;
+            Iterator temp(cur_node_ptr);
+            cur_node_ptr = cur_node_ptr->prev;
+            return temp;
         }
 
         Iterator operator+(int num)
         {
-            for (int i = 0; i < num; i++)
-            {
-                if (cur_node_ptr)
-                {
-                    cur_node_ptr = cur_node_ptr->next.get();
-                }
-                else
-                {
-                    throw std::runtime_error("Iterator exceeds range of container.");
-                }
+            for (int i = 0; i < num; ++i){
+                cur_node_ptr = cur_node_ptr->next.get();
             }
-            return cur_node_ptr;
+            return Iterator(cur_node_ptr);
         }
 
         Iterator operator-(int num)
         {
-            for (int i = 0; i < num; i++)
-            {
-                if (cur_node_ptr->prev)
-                {
+            for (int i = 0; i < num; ++i){
+                if (cur_node_ptr->prev){
                     cur_node_ptr = cur_node_ptr->prev;
-                }
-                else
-                {
-                    throw std::runtime_error("Iterator exceeds range of container.");
+                }else{
+                    auto temp = std::make_unique<Node>(0);
+                    temp->next = std::move(cur_node_ptr->head);
+                    cur_node_ptr = temp.get();
                 }
             }
-            return cur_node_ptr;
+            return Iterator(cur_node_ptr);
         }
 
         Iterator operator=(const Iterator &it) noexcept
         {
             cur_node_ptr = it.cur_node_ptr;
-            std::cout << "operator = is run" << std::endl;
-            return cur_node_ptr;
+            return Iterator(cur_node_ptr);
         }
 
         bool operator!=(const Iterator &it) noexcept
         {
             return cur_node_ptr != it.cur_node_ptr;
-        }
-
-        bool operator<(const Iterator &it) noexcept
-        {
-            return cur_node_ptr < it.cur_node_ptr;
-        }
-
-        bool operator>(const Iterator &it) noexcept
-        {
-            return cur_node_ptr > it.cur_node_ptr;
-        }
-
-        bool operator>=(const Iterator &it) noexcept
-        {
-            return cur_node_ptr >= it.cur_node_ptr;
-        }
-
-        bool operator<=(const Iterator &it) noexcept
-        {
-            return cur_node_ptr <= it.cur_node_ptr;
         }
 
         bool operator==(const Iterator &it) noexcept
@@ -228,11 +198,7 @@ public:
         }
         else
         {
-            if (it_position < begin() && it_position != end())
-            {
-                throw std::runtime_error("Position is out of range");
-            }
-            else if (it_position == begin())
+            if (it_position == begin())
             {
                 for (int i = 0; i < counts; i++)
                 {
@@ -407,10 +373,37 @@ int main()
     LinkedList<int>::Iterator it;
     LinkedList<int>::Iterator it2;
 
+    new_list.push_back(1);
+    new_list.push_back(2);
 
-    it = new_list.end();
-    std::cout << it.get_ptr() << std::endl;
+    it = new_list.begin()-1;
+    // new_list.insert(it, 3);
+    it++;
+
+    std::cout << *it << std::endl;
+ 
 
 
-    std::cout << new_list << std::endl;
+    // std::vector<int>::iterator it;
+    // std::vector<int> v {1,2};
+
+    // it = v.begin()-1;
+    // // v.insert(it-2,3);
+
+    // // for (it = v.begin()-2; it != (v.end()) ; it++){
+    // //     std::cout << *it <<std::endl;
+    // // }
+
+    //     std::cout << *it <<std::endl;
+
+
+    // int a = 1;
+    // int b = a++;
+    // int c = ++a;
+
+    // std::cout << a++ << std::endl;
+    // std::cout << b << std::endl;
+    // std::cout << c << std::endl;
+
+    
 }
