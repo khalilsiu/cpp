@@ -87,15 +87,13 @@ public:
         recursiveEmplace(head, std::forward<Args>(args)...);
     }
 
-    const value_t operator[](key_t&& key) noexcept
+    const std::optional<value_t> operator[](key_t&& key) const noexcept
     {
         auto cur = find(key);
         if (cur && key == cur->key){
             return cur->value;
         }else{
-            value_t value{};
-            insert(std::pair<key_t, value_t>(std::move(key), value));
-            return value;
+            return std::nullopt;
         }
     }
 
@@ -199,7 +197,7 @@ int main()
 
 
 
-    std::cout << new_bst <<std::endl;
+    std::cout << *new_bst['a'] <<std::endl;
     // std::cout << (new_bst.find('k'))->value <<std::endl;
 
     // std::map<char,int> mapp{std::pair<char, int>('a',2), std::pair<char, int>('b',3)};
