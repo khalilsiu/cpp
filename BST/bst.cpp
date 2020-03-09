@@ -1,132 +1,145 @@
 #include <iostream>
 #include <utility>
 #include <memory>
+#include <optional>
 #include <map>
 
-
-
-template <typename key1, typename value1>
+template <typename Key, typename Value>
 class BST
 {
     struct Node
     {
-        Node(key1 c, value1 v)
-            : key{c}, value{v}
+        Node(const Key& c, const Value& v)
+        : key{c}
+        , value{v}
         {
         }
-        key1 key;
-        value1 value;
+
+        const Key key; // Guess why it should be const?
+        Value value;
         std::unique_ptr<Node> left = nullptr;
         std::unique_ptr<Node> right = nullptr;
-        Node *prev = nullptr;
+        Node* prev = nullptr;
     };
 
-private:
-    std::unique_ptr<Node> head = nullptr;
-    template <typename key2, typename value2>
-    void recursiveInsert(std::unique_ptr<Node>& ptr, const std::pair<key2, value2>& pair) noexcept
-    {
-        // I am using std::unique_ptr<Node>& because I want to be able to use the unique_ptr directly, moving the unique_ptr does not work
-        // std::cout << pair.first << "::"<< pair.second << std::endl;
-        auto cur = ptr.get();
-        if(cur){
-            if(pair.first > cur->key){
-                recursiveInsert(cur->right, pair);
-            }else if (pair.first < cur-> key) {
-                recursiveInsert(cur->left, pair);
-            }else{
-                cur->value = pair.second;
-            }
-        }else{
-            auto temp = std::make_unique<Node>(pair.first, pair.second);
-            ptr = std::move(temp);
-        }
-    }
-
-    template <typename ...Args>
-    void recursiveEmplace(std::unique_ptr<Node>& ptr, Args&& ...args) noexcept
-    {
-        auto cur = ptr.get();
-
-        auto pair = std::pair<Args...>(std::forward<Args>(args)...);
-        if (cur){
-             if(pair.first > cur->key){
-                recursiveEmplace(cur->right, (args)...);
-            }else if (pair.first < cur-> key) {
-                recursiveEmplace(cur->left, (args)...);
-            }else{
-                // if key exists, there will be no insertion
-                return;
-            }
-        }else{
-            auto temp = std::make_unique<Node>(pair.first, pair.second);
-            ptr = std::move(temp);
-        }
-    }
-
 public:
-    using key_t = key1;
-    using value_t = value1;
+    template<typename T>
+    struct QueryResult : std::optional<std::reference_wrapper<T>>
+    {
+        using Base = std::optional<std::reference_wrapper<T>>;
+
+        using Base::Base;
+        using Base::operator bool;
+
+        decltype(auto) operator*() const
+        {
+            if (*this)
+            {
+                return Base::operator*().operator T&();
+                // std::reference_wrapper<T>& a === Base::operator*();
+                // a.operator T&() === T&
+            }
+            throw std::runtime_error("Null optional");
+        }
+    };
+
+    using key_t = Key;
+    using value_t = Value;
+
     BST() = default;
 
-
-    template <typename key3, typename value3>
-    void insert(const std::pair<key3, value3>& pair) noexcept
+    template <typename NewKey, typename NewValue>
+    void insert(const std::pair<NewKey, NewValue>& pair) noexcept
     // I think it is const std::pair<key3, value3>& because i think both key and value shall not be changed within the function
     // not just the key or the value
     // it is a reference because we do not want to directly copy the pair object, but to use the object's resources directly (faster)
     {
-        static_assert(std::is_constructible_v<key_t,key3>);
-        static_assert(std::is_constructible_v<value_t,value3>);
-        recursiveInsert(head, pair);
+        static_assert(std::is_constructible_v<key_t, NewKey>);
+        static_assert(std::is_constructible_v<value_t, NewValue>);
+        recursiveInsert(head, nullptr, pair);
     }
 
-    template <typename ...Args>
-    void emplace(Args&& ...args) noexcept
+    template <typename NewKey, typename ...Args>
+    void emplace(NewKey&& key, Args&& ...args) noexcept
     {
-        recursiveEmplace(head, std::forward<Args>(args)...);
+        static_assert(std::is_constructible_v<key_t, NewKey>);
+        static_assert(std::is_constructible_v<value_t, Args...>);
+        recursiveEmplace(head, std::forward<NewKey>(key), std::forward<Args>(args)...);
     }
 
-    const std::optional<value_t> operator[](key_t&& key) const noexcept
+    // 1. why key_t&&? In this function, key_t is known and it is not a template
+    // const std::optional<value_t> operator[](key_t&& key) const noexcept
+    // 2. I think you meant
+    // std::optional<const value_t&> operator[](key_t&& key) const noexcept
+    // See the return value
+    // But reference cannot put inside the optional. so, here is a possible way
+    QueryResult<const value_t> operator[](const key_t& key) const noexcept
     {
-        auto cur = find(key);
-        if (cur && key == cur->key){
-            return cur->value;
-        }else{
-            return std::nullopt;
-        }
+        return getImpl<const value_t>(*this, key);
     }
 
+    QueryResult<value_t> operator[](const key_t& key) noexcept
+    {
+        return getImpl<value_t>(*this, key);
+    }
+
+    // As you have operator [] already, can you name a better difference between [] and find?
+    // I know they can be the same, but from the user point of view, how to make it easier to use?
     const Node* find(const key_t& key) const noexcept
-    // const Node* is a variable pointer to a const Node, the Node member data cannot be changed
-    // Node const* is the same as the above, a variable pointer to a const Node (because const applies to what is immediately on its left)
-    // Node* const is a const pointer to a variable Node, the address of the pointer cannot be changed, but the Node member data can be changed
-    // const Node const* should be invalid (duplicate 'const' declaration specifier)
-    // const Node * const is a const pointer to a const Node where none of the address and member data could be changed
     {
-        auto cur = head.get();
-        while (cur)
-        {
-            if (key > cur->key)
-            {
-                cur = cur->right.get();
-            }
-            else if (key < cur->key)
-            {
-                cur = cur->left.get();
-                // std::cout<< cur->key << "::" << cur->value << std::endl;
-            }
-            else
-            {
-                return cur;
-            }
-        }
-        return cur;
+        return findImpl(head, key);
     }
 
     Node* find(const key_t& key) noexcept
     {
-        auto cur = head.get();
+        return findImpl(head, key);
+    }
+
+    friend std::ostream& operator<<(std::ostream& out, const BST& bst)
+    {
+        bst.printLeafNodes(out, bst.head);
+        return out;
+    }
+
+private:
+    template <typename key2, typename value2>
+    void recursiveInsert(std::unique_ptr<Node>& ptr, Node* parent, const std::pair<key2, value2>& pair) noexcept
+    {
+        if(auto cur = ptr.get(); ptr)
+        {
+            if(pair.first > cur->key)
+            {
+                recursiveInsert(cur->right, cur, pair);
+            }
+            else if (pair.first < cur-> key)
+            {
+                recursiveInsert(cur->left, cur, pair);
+            }
+            else
+            {
+                cur->value = pair.second;
+            }
+        }
+        else
+        {
+            ptr = std::make_unique<Node>(pair.first, pair.second);
+            ptr->prev = parent;
+        }
+    }
+
+    // Can you try to finish this function?
+    // Key is a const ref
+    // Value is created by argument pack
+    template <typename ...Args>
+    void recursiveEmplace(std::unique_ptr<Node>& ptr, Args&& ...args) noexcept
+    {
+        // TODO
+    }
+
+    template<typename T>
+    static auto findImpl(T&& currNode, const key_t& key) noexcept
+    {
+        auto cur = std::forward<T>(currNode).get();
         while (cur)
         {
             if (key > cur->key)
@@ -136,52 +149,54 @@ public:
             else if (key < cur->key)
             {
                 cur = cur->left.get();
-                // std::cout<< cur->key << "::" << cur->value << std::endl;
             }
             else
             {
                 return cur;
             }
         }
-        return cur;
+        return cur = nullptr;
     }
 
-    template <typename key3, typename value3>
-    friend std::ostream& operator<<(std::ostream& out, const BST<key3,value3>& bst);
-
-    void printLeafNodes(std::ostream& out, Node *node) const
+    template<typename T, typename BST_T>
+    static auto getImpl(BST_T&& tree, const key_t& key) noexcept
     {
-        if (!node)
+        auto cur = std::forward<BST_T>(tree).find(key);
+        if (cur)
         {
-            throw std::runtime_error("BST has no element");
+            return QueryResult<T>{cur->value};
         }
-        out << node->key << "::" << node->value << std::endl;
-        if (!node->left && !node->right)
+        else
         {
-            return;
-        }
-        
-        if (node->right)
-        {
-            // shouldnt return, if you return, the function ends, then it doesnt go into the next if statement
-            printLeafNodes(out, node->right.get());;
-        }
-        if (node->left)
-        {
-            printLeafNodes(out, node->left.get());
+            return QueryResult<T>{std::nullopt};
         }
     }
-};
 
-template <typename key, typename value>
-std::ostream& operator<<(std::ostream& out, const BST<key,value> &bst)
-{
-    bst.printLeafNodes(out, bst.head.get());
-    return out;
-}
+    void printLeafNodes(std::ostream& out, const std::unique_ptr<Node>& node) const
+    {
+        // Check this out, please tell me what is this function
+        // https://en.cppreference.com/w/cpp/memory/unique_ptr/operator_bool
+        // TODO I need the output to be
+        // ROOT_KEY::VALUE
+        // --LEVEL1_KEY1::VALUE1
+        // ----LEVEL2_KEY2::VALUE2
+        // --LEVEL1_RIGHT::VALUE3
+        if (node)
+        {
+            out << node->key << "::" << node->value << std::endl;
+
+            printLeafNodes(out, node->right);
+            printLeafNodes(out, node->left);
+        }
+    }
+
+private:
+    std::unique_ptr<Node> head = nullptr;
+};
 
 int main()
 {
+    // Try BST<int, std::string>
     BST<char, int> new_bst;
     std::pair<char,int> pair = std::pair<char,int>('e', 1);
     new_bst.insert(pair);
@@ -192,12 +207,13 @@ int main()
     new_bst.insert(std::pair<char,int>('f', 6));
     new_bst.insert(std::pair<char,int>('h', 7));
     new_bst.emplace('k', 8);
-    new_bst['i'];
 
-
-
-
+    std::cout << (new_bst['i'] ? "true" : "false") << std::endl;
     std::cout << *new_bst['a'] <<std::endl;
+
+    *new_bst['a'] = 100;
+    std::cout << *new_bst['a'] << std::endl;
+    std::cout << new_bst << std::endl;
     // std::cout << (new_bst.find('k'))->value <<std::endl;
 
     // std::map<char,int> mapp{std::pair<char, int>('a',2), std::pair<char, int>('b',3)};
